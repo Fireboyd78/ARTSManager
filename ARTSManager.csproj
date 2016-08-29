@@ -44,7 +44,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BinaryReader.cs" />
     <Compile Include="DLP.cs" />
     <Compile Include="FileIO.cs" />
     <Compile Include="Program.cs" />
