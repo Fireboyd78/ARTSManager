@@ -6,6 +6,24 @@ using System.Text;
 
 namespace ARTSManager
 {
+    public abstract class asStreamData
+    {
+        public virtual void Load(asStream stream)
+        {
+            return;
+        }
+
+        public virtual void Save(asStream stream)
+        {
+            return;
+        }
+
+        public virtual void Print(StringBuilder writer)
+        {
+            return;
+        }
+    }
+
     public class asStream
     {
         private MemoryStream _stream;
