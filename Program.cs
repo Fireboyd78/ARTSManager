@@ -8,6 +8,7 @@ namespace DLPTool
 {
     class Program
     {
+#if OLD_LOADER
         static FileStream stream;
         static BinaryReader reader;
 
@@ -55,6 +56,8 @@ namespace DLPTool
 
         static void ReadPatch()
         {
+            var pos = reader.BaseStream.Position;
+
             var patch_id1 = reader.ReadInt16();
             var patch_id2 = reader.ReadInt16();
             var unk_04 = reader.ReadInt16();
@@ -64,6 +67,14 @@ namespace DLPTool
             var phys_id = reader.ReadInt16();
 
             var vert_count = patch_id1 * patch_id2;
+
+            if ((unk_04 & 0xFFFE) != unk_04)
+            {
+                Console.WriteLine($"  ReadPatch:: found facet @ 0x{pos:X8} with unused lower bits");
+                Console.WriteLine($"              changing {unk_04} to {unk_04 & 0xFFFE}");
+
+                unk_04 = (short)(unk_04 & 0xFFFE);
+            }
             
             sb.AppendLine($"facet {{");
 
@@ -139,11 +150,81 @@ namespace DLPTool
 
             sb.AppendLine($"vx {x,12:F6} {y,12:F6} {z,12:F6}");
         }
+#endif
+        static List<T> ParseDB<T>(string filename, string libName, string entriesName)
+            where T : asStreamData, new()
+        {
+            var stream = new asStream(filename);
+
+            Console.WriteLine($"Parsing DB: \"{filename}\"");
+
+            var numEntries = stream.GetInt();            
+            var entries = new List<T>(numEntries);
+
+            for (int i = 0; i < numEntries; i++)
+            {
+                var entry = new T();
+                entry.Load(stream);
+
+                entries.Add(entry);
+            }
+
+            var writer = new StringBuilder();
+
+            writer.AppendLine($"# {libName}");
+            writer.AppendLine($"# {entriesName,-12} {entries.Count}");
+            writer.AppendLine();
+
+            foreach (var entry in entries)
+            {
+                entry.Print(writer);
+                writer.AppendLine();
+            }
+
+            File.WriteAllText(Path.ChangeExtension(filename, ".log"), writer.ToString());
+
+            return entries;
+        }
 
         static void Main(string[] args)
         {
-            var file = @"C:\Dev\Scripts\3dsmax\MMBuilder\vck\gold\dlp\vpredcar_s.dlp";
+            /*
+            var file = @"C:\Dev\Research\MM1\vck\gold\dlp\vpredcar_s.dlp";
+            var dlp = DLPFile.Open(file);
+            
+            // write an ASCII file describing the DLP
+            dlp.WriteLog();
+            */
 
+            var mtlLib = ParseDB<agiMaterial>(@"C:\Dev\Research\MM1\MTL\MATERIAL.DB", "Material library", "Materials");
+            var texLib = ParseDB<agiTexture>(@"C:\Dev\Research\MM1\MTL\TEXTURE.DB", "Texture library", "Textures");
+            var physLib = ParseDB<agiPhysics>(@"C:\Dev\Research\MM1\MTL\PHYSICS.DB", "Physics library", "Physics");
+            
+            var directory = @"C:\Dev\Research\MM1\midvwtrial\DLP\";
+            var nFiles = 0;
+
+            foreach (var filename in Directory.EnumerateFiles(directory, "*.DLP", SearchOption.AllDirectories))
+            {
+                Console.WriteLine($"[{nFiles + 1}] {filename}");
+
+                var dlp = DLPFile.Open(filename);
+
+                // write an ASCII file describing the DLP
+                dlp.WriteLog();
+
+                nFiles += 1;
+            }
+
+            Console.WriteLine($"Finished parsing {nFiles} DLP files.");
+
+
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                Console.WriteLine("Process complete. Press any key to exit.");
+                Console.ReadKey();
+            }
+
+#if OLD_LOADER
             using (stream = File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (reader = new BigEndianBinaryReader(stream))
             {
@@ -199,6 +280,7 @@ namespace DLPTool
             }
 
             File.WriteAllText(Path.ChangeExtension(file, ".log"), sb.ToString());
+#endif
         }
     }
 }
