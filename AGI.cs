@@ -1,11 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
+using CsvHelper;
+
 namespace ARTSManager
 {
-    public class agiMaterial : asStreamData
+    // This is the name Angel Studios uses, so I'll continue the tradition here :P
+    public abstract class agiRefreshable : asStreamData
+    {
+        /*
+            Abstract class for grouping together all the AGI stuff
+        */
+    }
+
+    public interface IAGILibraryData
+    {
+        void LibraryHeader(CsvWriter writer);
+
+        void LibraryLoad(CsvReader reader);
+        void LibrarySave(CsvWriter writer);
+    }
+
+    public class agiMaterial : agiRefreshable, IAGILibraryData
     {
         public string Name { get; set; }
 
@@ -18,8 +37,8 @@ namespace ARTSManager
 
         public float Shininess { get; set; }
 
-        public short Unknown { get; set; }
-
+        public short Reserved { get; set; }
+        
         public override void Load(asStream stream)
         {
             Name = stream.GetString(32);
@@ -33,7 +52,7 @@ namespace ARTSManager
 
             Shininess = stream.GetFloat();
 
-            Unknown = stream.GetShort();
+            Reserved = stream.GetShort();
         }
 
         public override void Save(asStream stream)
@@ -48,7 +67,103 @@ namespace ARTSManager
             Specular.CopyTo(stream);
 
             stream.Put(Shininess);
-            stream.Put(Unknown);
+            stream.Put(Reserved);
+        }
+
+        void IAGILibraryData.LibraryHeader(CsvWriter writer)
+        {
+            writer.WriteField("name");
+
+            writer.WriteField("emisR");
+            writer.WriteField("emisG");
+            writer.WriteField("emisB");
+            writer.WriteField("emisA");
+
+            writer.WriteField("ambR");
+            writer.WriteField("ambG");
+            writer.WriteField("ambB");
+            writer.WriteField("ambA");
+
+            writer.WriteField("difR");
+            writer.WriteField("difG");
+            writer.WriteField("difB");
+            writer.WriteField("difA");
+
+            writer.WriteField("specR");
+            writer.WriteField("specG");
+            writer.WriteField("specB");
+            writer.WriteField("specA");
+
+            writer.WriteField("shininess");
+            writer.WriteField("reserved");
+
+            writer.NextRecord();
+        }
+
+        void IAGILibraryData.LibraryLoad(CsvReader reader)
+        {
+            Name = reader.GetField<string>("name");
+
+            Emission = new ColorRGBA() {
+                iR = reader.GetField<int>("emisR"),
+                iG = reader.GetField<int>("emisG"),
+                iB = reader.GetField<int>("emisB"),
+                iA = reader.GetField<int>("emisA"),
+            };
+
+            Ambient = new ColorRGBA() {
+                iR = reader.GetField<int>("ambR"),
+                iG = reader.GetField<int>("ambG"),
+                iB = reader.GetField<int>("ambB"),
+                iA = reader.GetField<int>("ambA"),
+            };
+
+            Diffuse = new ColorRGBA() {
+                iR = reader.GetField<int>("difR"),
+                iG = reader.GetField<int>("difG"),
+                iB = reader.GetField<int>("difB"),
+                iA = reader.GetField<int>("difA"),
+            };
+
+            Specular = new ColorRGBA() {
+                iR = reader.GetField<int>("specR"),
+                iG = reader.GetField<int>("specG"),
+                iB = reader.GetField<int>("specB"),
+                iA = reader.GetField<int>("specA"),
+            };
+
+            Shininess = reader.GetField<float>("shininess");
+            Reserved = reader.GetField<short>("reserved");
+        }
+
+        void IAGILibraryData.LibrarySave(CsvWriter writer)
+        {
+            writer.WriteField(Name);
+
+            writer.WriteField(Emission.iR);
+            writer.WriteField(Emission.iG);
+            writer.WriteField(Emission.iB);
+            writer.WriteField(Emission.iA);
+
+            writer.WriteField(Ambient.iR);
+            writer.WriteField(Ambient.iG);
+            writer.WriteField(Ambient.iB);
+            writer.WriteField(Ambient.iA);
+
+            writer.WriteField(Diffuse.iR);
+            writer.WriteField(Diffuse.iG);
+            writer.WriteField(Diffuse.iB);
+            writer.WriteField(Diffuse.iA);
+
+            writer.WriteField(Specular.iR);
+            writer.WriteField(Specular.iG);
+            writer.WriteField(Specular.iB);
+            writer.WriteField(Specular.iA);
+
+            writer.WriteField(Shininess);
+            writer.WriteField(Reserved);
+
+            writer.NextRecord();
         }
 
         public override void Print(StringBuilder writer)
@@ -69,7 +184,7 @@ namespace ARTSManager
 
             writer.AppendLine("}");
         }
-
+        
         public agiMaterial() { }
         public agiMaterial(asStream stream)
         {
@@ -77,7 +192,7 @@ namespace ARTSManager
         }
     }
 
-    public class agiTexture : asStreamData
+    public class agiTexture : agiRefreshable, IAGILibraryData
     {
         public string Name { get; set; }
 
@@ -128,7 +243,11 @@ namespace ARTSManager
             if ((Flags & 4) != 0)
                 writer.Append("twrap ");
 
-            // not sure how many possible flags there are
+            /* flags I'm not sure about yet:
+                - opaque
+                - decal
+                - envmap
+            */
             if ((Flags & 8) != 0)
                 writer.Append("FLAG_8 ");
             if ((Flags & 16) != 0)
@@ -139,8 +258,42 @@ namespace ARTSManager
                 writer.Append("FLAG_64 ");
             if ((Flags & 128) != 0)
                 writer.Append("FLAG_128 ");
-
+            
             writer.AppendLine("\n}");
+        }
+
+        void IAGILibraryData.LibraryHeader(CsvWriter writer)
+        {
+            writer.WriteField("name");
+
+            writer.WriteField("flags");
+
+            writer.WriteField("unk1");
+            writer.WriteField("unk2");
+
+            writer.NextRecord();
+        }
+
+        void IAGILibraryData.LibraryLoad(CsvReader reader)
+        {
+            Name = reader.GetField<string>("name");
+
+            Flags = reader.GetField<byte>("flags");
+
+            Unknown1 = reader.GetField<byte>("unk1");
+            Unknown2 = reader.GetField<byte>("unk2");
+        }
+
+        void IAGILibraryData.LibrarySave(CsvWriter writer)
+        {
+            writer.WriteField(Name);
+
+            writer.WriteField(Flags);
+
+            writer.WriteField(Unknown1);
+            writer.WriteField(Unknown2);
+
+            writer.NextRecord();
         }
 
         public agiTexture() { }
@@ -150,7 +303,7 @@ namespace ARTSManager
         }
     }
 
-    public class agiPhysics : asStreamData
+    public class agiPhysics : agiRefreshable, IAGILibraryData
     {
         public string Name { get; set; }
 
@@ -212,6 +365,89 @@ namespace ARTSManager
             PtxColor.CopyTo(stream);
         }
 
+        void IAGILibraryData.LibraryHeader(CsvWriter writer)
+        {
+            writer.WriteField("name");
+
+            writer.WriteField("friction");
+            writer.WriteField("elasticity");
+            writer.WriteField("drag");
+
+            writer.WriteField("bumpheight");
+            writer.WriteField("bumpwidth");
+
+            writer.WriteField("sinkdepth");
+            writer.WriteField("ptxrate");
+
+            writer.WriteField("type");
+            writer.WriteField("sound");
+
+            writer.WriteField("velX");
+            writer.WriteField("velY");
+
+            writer.WriteField("ptxcolorR");
+            writer.WriteField("ptxcolorG");
+            writer.WriteField("ptxcolorB");
+
+            writer.NextRecord();
+        }
+
+        void IAGILibraryData.LibraryLoad(CsvReader reader)
+        {
+            Name = reader.GetField<string>("name");
+
+            Friction = reader.GetField<float>("friction");
+            Elasticity = reader.GetField<float>("elasticity");
+            Drag = reader.GetField<float>("drag");
+
+            BumpHeight = reader.GetField<float>("bumpheight");
+            BumpWidth = reader.GetField<float>("bumpwidth");
+
+            SinkDepth = reader.GetField<float>("sinkdepth");
+            PtxRate = reader.GetField<float>("ptxrate");
+
+            Type = reader.GetField<int>("type");
+            Sound = reader.GetField<int>("sound");
+
+            Velocity = new Vector2() {
+                X = reader.GetField<float>("velX"),
+                Y = reader.GetField<float>("velY")
+            };
+
+            PtxColor = new ColorRGB() {
+                iR = reader.GetField<int>("ptxcolorR"),
+                iG = reader.GetField<int>("ptxcolorG"),
+                iB = reader.GetField<int>("ptxcolorB"),
+            };
+        }
+
+        void IAGILibraryData.LibrarySave(CsvWriter writer)
+        {
+            writer.WriteField(Name);
+
+            writer.WriteField(Friction);
+            writer.WriteField(Elasticity);
+            writer.WriteField(Drag);
+
+            writer.WriteField(BumpHeight);
+            writer.WriteField(BumpWidth);
+
+            writer.WriteField(SinkDepth);
+            writer.WriteField(PtxRate);
+
+            writer.WriteField(Type);
+            writer.WriteField(Sound);
+
+            writer.WriteField(Velocity.X);
+            writer.WriteField(Velocity.Y);
+
+            writer.WriteField(PtxColor.iR);
+            writer.WriteField(PtxColor.iG);
+            writer.WriteField(PtxColor.iB);
+
+            writer.NextRecord();
+        }
+
         public override void Print(StringBuilder writer)
         {
             /*===============================================
@@ -245,7 +481,7 @@ namespace ARTSManager
 
             writer.AppendLine("}");
         }
-
+        
         public agiPhysics() { }
         public agiPhysics(asStream stream)
         {

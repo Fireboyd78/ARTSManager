@@ -50,6 +50,24 @@ namespace ARTSManager
         public float G { get; set; }
         public float B { get; set; }
 
+        public int iR
+        {
+            get { return (int)(R * 255.999f); }
+            set { R = (value / 255.0f); }
+        }
+
+        public int iG
+        {
+            get { return (int)(G * 255.999f); }
+            set { G = (value / 255.0f); }
+        }
+
+        public int iB
+        {
+            get { return (int)(B * 255.999f); }
+            set { B = (value / 255.0f); }
+        }
+
         public void CopyTo(asStream stream)
         {
             stream.Put(R);
@@ -71,6 +89,30 @@ namespace ARTSManager
         public float G { get; set; }
         public float B { get; set; }
         public float A { get; set; }
+
+        public int iR
+        {
+            get { return (int)(R * 255.999f); }
+            set { R = (value / 255.0f); }
+        }
+
+        public int iG
+        {
+            get { return (int)(G * 255.999f); }
+            set { G = (value / 255.0f); }
+        }
+
+        public int iB
+        {
+            get { return (int)(B * 255.999f); }
+            set { B = (value / 255.0f); }
+        }
+
+        public int iA
+        {
+            get { return (int)(A * 255.999f); }
+            set { A = (value / 255.0f); }
+        }
 
         public void CopyTo(asStream stream)
         {

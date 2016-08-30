@@ -4,12 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
+using CsvHelper;
+
 namespace ARTSManager
 {
     class Program
     {
         static List<T> ParseDB<T>(string filename, string libName, string entriesName)
-            where T : asStreamData, new()
+            where T : agiRefreshable, IAGILibraryData, new()
         {
             var stream = new asStream(filename);
 
@@ -26,50 +28,71 @@ namespace ARTSManager
                 entries.Add(entry);
             }
 
-            var writer = new StringBuilder();
+            //var writer = new StringBuilder();
+            //
+            //writer.AppendLine($"# {libName}");
+            //writer.AppendLine($"# {entriesName,-12} {entries.Count}");
+            //writer.AppendLine();
 
-            writer.AppendLine($"# {libName}");
-            writer.AppendLine($"# {entriesName,-12} {entries.Count}");
-            writer.AppendLine();
+            //foreach (var entry in entries)
+            //{
+            //    entry.Print(writer);
+            //    writer.AppendLine();
+            //}
 
-            foreach (var entry in entries)
+            //File.WriteAllText(Path.ChangeExtension(filename, ".log"), writer.ToString());
+
+            using (var file = new StreamWriter(Path.ChangeExtension(filename, ".csv")))
+            using (var writer = new CsvWriter(file))
             {
-                entry.Print(writer);
-                writer.AppendLine();
+                var writeHeader = true;
+
+                foreach (var entry in entries)
+                {
+                    if (writeHeader)
+                    {
+                        entry.LibraryHeader(writer);
+                        writeHeader = false;
+                    }
+
+                    entry.LibrarySave(writer);
+                }
+
+                file.Flush();
             }
-
-            File.WriteAllText(Path.ChangeExtension(filename, ".log"), writer.ToString());
-
+            
             return entries;
         }
 
         static void Main(string[] args)
         {
-            /*
-            var file = @"C:\Dev\Research\MM1\vck\gold\dlp\vpredcar_s.dlp";
-            var dlp = DLPFile.Open(file);
+            var directories = new[] {
+                @"C:\Dev\Research\MM1\",
+                //@"C:\Dev\Research\MM1\midvwtrial\",
+            };
             
-            // write an ASCII file describing the DLP
-            dlp.WriteLog();
-            */
-
-            var mtlLib = ParseDB<agiMaterial>(@"C:\Dev\Research\MM1\MTL\MATERIAL.DB", "Material library", "Materials");
-            var texLib = ParseDB<agiTexture>(@"C:\Dev\Research\MM1\MTL\TEXTURE.DB", "Texture library", "Textures");
-            var physLib = ParseDB<agiPhysics>(@"C:\Dev\Research\MM1\MTL\PHYSICS.DB", "Physics library", "Physics");
-            
-            var directory = @"C:\Dev\Research\MM1\midvwtrial\DLP\";
             var nFiles = 0;
 
-            foreach (var filename in Directory.EnumerateFiles(directory, "*.DLP", SearchOption.AllDirectories))
+            foreach (var directory in directories)
             {
-                Console.WriteLine($"[{nFiles + 1}] {filename}");
+                var dlpDir = Path.Combine(directory, "DLP");
+                var mtlDir = Path.Combine(directory, "MTL");
 
-                var dlp = DLPFile.Open(filename);
+                ParseDB<agiMaterial>(Path.Combine(mtlDir, "MATERIAL.DB"), "Material library", "Materials");
+                ParseDB<agiTexture>(Path.Combine(mtlDir, "TEXTURE.DB"), "Texture library", "Textures");
+                ParseDB<agiPhysics>(Path.Combine(mtlDir, "PHYSICS.DB"), "Physics library", "Physics");
 
-                // write an ASCII file describing the DLP
-                dlp.WriteLog();
+                foreach (var filename in Directory.EnumerateFiles(dlpDir, "*.DLP", SearchOption.AllDirectories))
+                {
+                    Console.WriteLine($"[{nFiles + 1}] {filename}");
 
-                nFiles += 1;
+                    var dlp = DLPFile.Open(filename);
+
+                    // write an ASCII file describing the DLP
+                    dlp.SaveASCII();
+
+                    nFiles += 1;
+                }
             }
 
             Console.WriteLine($"Finished parsing {nFiles} DLP files.");
