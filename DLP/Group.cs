@@ -35,7 +35,7 @@ namespace ARTSManager
             stream.PutString(Name, strLen);
 
             var vertsCount = (Vertices != null) ? Vertices.Length : 0;
-            var patchesCount = (Patches != null) ? Vertices.Length : 0;
+            var patchesCount = (Patches != null) ? Patches.Length : 0;
 
             stream.Put(vertsCount);
             stream.Put(patchesCount);
